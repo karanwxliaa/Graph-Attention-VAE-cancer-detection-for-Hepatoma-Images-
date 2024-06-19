@@ -1,9 +1,16 @@
 import numpy as np
-from PIL import Image
 import os
 
-from csbdeep.utils import normalize
+from PIL import Image
+from csbdeep.utils import Path, normalize
+from csbdeep.utils.tf import keras_import
+keras = keras_import()
+
+from stardist import export_imagej_rois, random_label_cmap
 from stardist.models import StarDist2D
+
+np.random.seed(0)
+cmap = random_label_cmap()
 
 
 # Function to load image and convert to numpy array
@@ -22,7 +29,7 @@ def segment_and_save_images(model, root_dir, save_dir, normalizer=None):
         img_names = []
         for img in os.listdir(category_path):
             img_paths.append(os.path.join(category_path, img))
-            img_names.append(img)
+            img_names.append(img.replace('.jpg', ''))
         images = [load_image(img_path) for img_path in img_paths]
         idx = 0
         for img in images:
@@ -30,13 +37,14 @@ def segment_and_save_images(model, root_dir, save_dir, normalizer=None):
             try:
                 labels, _ = model.predict_instances(img, prob_thresh=0.20)
                 labels[labels > 0] = 1
-                labels = (labels * 255).astype('uint8')
+                labels = (labels.astype(np.uint8) * 255)
                 # Convert the numpy array to an image
                 image = Image.fromarray(labels)
                 # Save the image
-                image.save(os.path.join(save_dir, category, f"{img_names[idx]}.png"))
-            except:
+                image.save(os.path.join(save_dir, category, f"{img_names[idx]}.jpg"))
+            except Exception as e:
                 print(f"Image at index {idx} failed to be segmented due to exception !")
+                print(f"Exception: {e}")
                 pass
 
         print(f"Completed segmenting images from category: {category} !\n\n")
